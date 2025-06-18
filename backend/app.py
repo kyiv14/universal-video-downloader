@@ -1,46 +1,42 @@
 from flask import Flask, request, send_file, jsonify
-from yt_dlp import YoutubeDL
-import tempfile
-import os
-
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return '✅ Universal Video Downloader backend is running.'
-
-@app.route('/download', methods=['POST'])
-def download_video():
-    data = request.get_json()
-    url = data.get("url")
-
-    if not url:
-        return jsonify({"error": "URL is required"}), 400
-
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            ydl_opts = {
-                'format': 'bestvideo+bestaudio/best',
-                'outtmpl': os.path.join(tmp_dir, '%(title)s.%(ext)s'),
-                'quiet': True,
-                'noplaylist': True,
-                'merge_output_format': 'mp4'
-            }
-
-            with YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-
-            return send_file(filename, as_attachment=True)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
 from flask_cors import CORS
+import yt_dlp
+import os
+import uuid
 
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/")
+def index():
+    return "🎥 Universal Video Downloader is running"
+
+@app.route("/download", methods=["POST"])
+def download():
+    data = request.get_json()
+    url = data.get("url")
+
+    if not url:
+        return jsonify({"error": "URL not provided"}), 400
+
+    filename = f"video_{uuid.uuid4().hex}.mp4"
+
+    ydl_opts = {
+        "outtmpl": filename,
+        "format": "bestvideo+bestaudio/best",
+        "merge_output_format": "mp4",
+        "quiet": True,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        return send_file(filename, as_attachment=True, download_name="video.mp4")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if os.path.exists(filename):
+            os.remove(filename)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
