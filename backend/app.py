@@ -1,50 +1,51 @@
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
-from yt_dlp import YoutubeDL
+import yt_dlp
 import os
 import uuid
 
 app = Flask(__name__)
 CORS(app)
 
-# Путь к cookies.txt
-COOKIE_FILE = "cookies.txt"
+DOWNLOAD_FOLDER = 'downloads'
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-@app.route("/")
+@app.route('/')
 def index():
-    return "🎬 Media downloader is running!"
+    return 'YouTube Downloader API'
 
-@app.route("/download", methods=["POST"])
-def download_video():
+@app.route('/download', methods=['POST'])
+def download():
     data = request.get_json()
-    url = data.get("url")
+    url = data.get('url')
 
     if not url:
-        return jsonify({"error": "No URL provided"}), 400
+        return jsonify({'error': 'Missing URL'}), 400
 
-    # Генерируем уникальное имя файла
-    outtmpl = f"downloads/{uuid.uuid4()}.%(ext)s"
+    video_id = str(uuid.uuid4())
+    output_template = os.path.join(DOWNLOAD_FOLDER, f'{video_id}.%(ext)s')
 
     ydl_opts = {
-        "format": "bestvideo+bestaudio/best",
-        "outtmpl": outtmpl,
-        "noplaylist": True,
-        "quiet": True,
-        "cookiefile": COOKIE_FILE,
-        "merge_output_format": "mp4"
+        'outtmpl': output_template,
+        'format': 'bestvideo+bestaudio/best',
+        'merge_output_format': 'mp4',
+        'cookies': 'cookies.txt',  # добавлено использование cookies
+        'quiet': True,
+        'noplaylist': True,
     }
 
     try:
-        with YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            # Если видео было объединено, расширение будет .mp4
-            if not os.path.exists(filename):
-                filename = os.path.splitext(filename)[0] + ".mp4"
-            return send_file(filename, as_attachment=True)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        # Поиск файла, чтобы отдать пользователю
+        for ext in ['mp4', 'mkv', 'webm']:
+            file_path = os.path.join(DOWNLOAD_FOLDER, f'{video_id}.{ext}')
+            if os.path.exists(file_path):
+                return send_file(file_path, as_attachment=True)
+        return jsonify({'error': 'Download failed'}), 500
 
-if __name__ == "__main__":
-    os.makedirs("downloads", exist_ok=True)
-    app.run(host="0.0.0.0", port=10000)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
