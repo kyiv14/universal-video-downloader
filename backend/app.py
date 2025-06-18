@@ -6,44 +6,50 @@ import uuid
 import traceback
 
 app = Flask(__name__)
-CORS(app)  # Разрешаем кросс-доменные запросы
+
+# Разрешаем запросы с вашего фронта
+CORS(app, origins=["https://universal-video-downloader.vercel.app"])
 
 @app.route("/")
 def home():
-    return "🟢 Universal Video Downloader API is running!"
+    return "✅ Universal Video Downloader API is running!"
 
 @app.route("/download", methods=["POST"])
-def download():
+def download_video():
     try:
         data = request.get_json()
         url = data.get("url")
         if not url:
-            return jsonify({"error": "No URL provided"}), 400
+            return jsonify({"error": "Missing 'url' parameter"}), 400
 
-        unique_id = str(uuid.uuid4())
-        output_file = f"{unique_id}.mp4"
+        # Генерация уникального имени файла
+        video_id = str(uuid.uuid4())
+        filename = f"{video_id}.mp4"
 
         ydl_opts = {
-            "outtmpl": output_file,
-            "format": "bestvideo+bestaudio/best",
-            "merge_output_format": "mp4",
-            "cookies": "cookies.txt",  # Убедись, что cookies.txt лежит рядом с app.py
-            "quiet": True,
+            'outtmpl': filename,
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+            'cookies': 'cookies.txt',
+            'quiet': True,
+            'noplaylist': True
         }
 
+        # Загрузка видео
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        return send_file(output_file, as_attachment=True)
+        # Отправка файла пользователю
+        return send_file(filename, as_attachment=True)
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
     finally:
-        # Удаляем файл после отправки (если он был создан)
-        if 'output_file' in locals() and os.path.exists(output_file):
-            os.remove(output_file)
+        # Удаление файла после отправки
+        if os.path.exists(filename):
+            os.remove(filename)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
