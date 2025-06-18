@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Скачать видео</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #bf0000;
+    }
+    .netflix-style {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="netflix-style text-gray-800 min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6">
+    <div class="text-center">
+      <h1 class="text-4xl font-extrabold mb-2 text-red-600">🎬 VideoGrabber</h1>
+      <p class="text-sm text-gray-600 mb-6">Скачайте видео с YouTube, Instagram, TikTok, Facebook и других платформ</p>
+    </div>
+
+    <div>
+      <input
+        type="text"
+        id="url"
+        placeholder="Вставьте ссылку на видео..."
+        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+      />
+      <button
+        onclick="downloadVideo()"
+        class="mt-4 w-full bg-red-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-red-700 transition"
+      >Скачать видео</button>
+      <p id="status" class="text-center text-sm text-gray-500 mt-4"></p>
+    </div>
+  </div>
+
+  <script>
+    function downloadVideo() {
+      const url = document.getElementById("url").value;
+      const status = document.getElementById("status");
+      status.textContent = "⏳ Загружается...";
+
+      fetch("https://YOUR_BACKEND_URL/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Ошибка загрузки");
+        return res.blob();
+      })
+      .then(blob => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "video.mp4";
+        link.click();
+        status.textContent = "✅ Видео загружено!";
+      })
+      .catch(err => {
+        status.textContent = "❌ Ошибка: " + err.message;
+      });
+    }
+  </script>
+</body>
+</html>
