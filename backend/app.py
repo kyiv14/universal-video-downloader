@@ -5,16 +5,14 @@ import os
 import uuid
 
 app = Flask(__name__)
-
-# Разрешить доступ только с нужного домена:
-CORS(app, origins=["https://universal-video-downloader.vercel.app"])
+CORS(app)
 
 @app.route("/")
-def home():
-    return "✅ Universal Video Downloader is running"
+def index():
+    return "Video downloader is running!"
 
 @app.route("/download", methods=["POST"])
-def download_video():
+def download():
     data = request.get_json()
     url = data.get("url")
 
@@ -33,13 +31,16 @@ def download_video():
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+
         return send_file(filename, as_attachment=True, download_name="video.mp4")
+
     except Exception as e:
+        print("Error downloading video:", str(e))
         return jsonify({"error": str(e)}), 500
+
     finally:
         if os.path.exists(filename):
             os.remove(filename)
 
 if __name__ == "__main__":
-    # обязательно слушать 0.0.0.0 для Render и указать порт 10000
     app.run(host="0.0.0.0", port=10000)
