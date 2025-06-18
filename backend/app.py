@@ -1,50 +1,50 @@
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
+from yt_dlp import YoutubeDL
 import os
 import uuid
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
-import yt_dlp
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/')
-def index():
-    return "✅ Video downloader is running!"
+# Путь к cookies.txt
+COOKIE_FILE = "cookies.txt"
 
-@app.route('/download', methods=['POST'])
+@app.route("/")
+def index():
+    return "🎬 Media downloader is running!"
+
+@app.route("/download", methods=["POST"])
 def download_video():
     data = request.get_json()
     url = data.get("url")
 
     if not url:
-        return jsonify({"error": "URL not provided"}), 400
+        return jsonify({"error": "No URL provided"}), 400
 
-    filename = f"video_{uuid.uuid4().hex}.mp4"
+    # Генерируем уникальное имя файла
+    outtmpl = f"downloads/{uuid.uuid4()}.%(ext)s"
 
     ydl_opts = {
-        "outtmpl": filename,
         "format": "bestvideo+bestaudio/best",
-        "merge_output_format": "mp4",
+        "outtmpl": outtmpl,
+        "noplaylist": True,
         "quiet": True,
-        "geo_bypass": True,
-        "geo_bypass_country": "US",
+        "cookiefile": COOKIE_FILE,
+        "merge_output_format": "mp4"
     }
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        return send_file(filename, as_attachment=True, download_name="video.mp4")
-
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+            # Если видео было объединено, расширение будет .mp4
+            if not os.path.exists(filename):
+                filename = os.path.splitext(filename)[0] + ".mp4"
+            return send_file(filename, as_attachment=True)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    finally:
-        if os.path.exists(filename):
-            try:
-                os.remove(filename)
-            except:
-                pass  # ignore deletion error
-
-if __name__ == '__main__':
+if __name__ == "__main__":
+    os.makedirs("downloads", exist_ok=True)
     app.run(host="0.0.0.0", port=10000)
