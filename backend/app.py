@@ -1,18 +1,18 @@
-from flask import Flask, request, send_file, jsonify
-from flask_cors import CORS
-import yt_dlp
 import os
 import uuid
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+import yt_dlp
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/")
+@app.route('/')
 def index():
-    return "Video downloader is running!"
+    return "✅ Video downloader is running!"
 
-@app.route("/download", methods=["POST"])
-def download():
+@app.route('/download', methods=['POST'])
+def download_video():
     data = request.get_json()
     url = data.get("url")
 
@@ -26,6 +26,8 @@ def download():
         "format": "bestvideo+bestaudio/best",
         "merge_output_format": "mp4",
         "quiet": True,
+        "geo_bypass": True,
+        "geo_bypass_country": "US",
     }
 
     try:
@@ -35,12 +37,14 @@ def download():
         return send_file(filename, as_attachment=True, download_name="video.mp4")
 
     except Exception as e:
-        print("Error downloading video:", str(e))
         return jsonify({"error": str(e)}), 500
 
     finally:
         if os.path.exists(filename):
-            os.remove(filename)
+            try:
+                os.remove(filename)
+            except:
+                pass  # ignore deletion error
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(host="0.0.0.0", port=10000)
