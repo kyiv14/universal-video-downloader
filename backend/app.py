@@ -5,14 +5,16 @@ import os
 import uuid
 
 app = Flask(__name__)
-CORS(app)
+
+# Разрешить доступ только с нужного домена:
+CORS(app, origins=["https://universal-video-downloader.vercel.app"])
 
 @app.route("/")
-def index():
-    return "🎥 Universal Video Downloader is running"
+def home():
+    return "✅ Universal Video Downloader is running"
 
 @app.route("/download", methods=["POST"])
-def download():
+def download_video():
     data = request.get_json()
     url = data.get("url")
 
@@ -39,4 +41,5 @@ def download():
             os.remove(filename)
 
 if __name__ == "__main__":
+    # обязательно слушать 0.0.0.0 для Render и указать порт 10000
     app.run(host="0.0.0.0", port=10000)
