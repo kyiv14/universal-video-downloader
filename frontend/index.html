@@ -43,7 +43,7 @@
       const status = document.getElementById("status");
       status.textContent = "⏳ Загружается...";
 
-      fetch("https://YOUR_BACKEND_URL/download", {
+      fetch("https://universal-video-downloader-2xss.onrender.com/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url })
